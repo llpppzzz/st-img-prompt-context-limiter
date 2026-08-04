@@ -1,17 +1,12 @@
-<div>
-    <h3 data-i18n="ipl_title">Image Prompt Context Limit</h3>
-    <label for="ipl_enabled" class="checkbox_label">
-        <input id="ipl_enabled" type="checkbox" />
-        <span data-i18n="ipl_enabled_txt">Limit chat history for image prompt generation</span>
-    </label>
-    <label for="ipl_limit" data-i18n="ipl_limit_txt">Chat messages to send</label>
-    <select id="ipl_limit" class="text_pole">
-        <option value="1" data-i18n="ipl_limit_1">1 (last message only)</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-        <option value="0" data-i18n="ipl_limit_0">All messages</option>
-    </select>
-    <small data-i18n="ipl_hint">Only the image prompt template (system) and the last N chat messages are sent to the LLM; character card, scenario, world info, jailbreak, and other system prompts are skipped. The template is sent as the last message.</small>
-</div>
+<label for="ipl_limit" data-i18n="[title]ipl_limit_title" title="Only the image prompt template (system) and the last N chat messages are sent to the LLM when generating an image prompt. Character card, scenario, world info, and other system prompts are skipped. Set to 1 to send only the last message.">
+    <span data-i18n="ipl_limit_txt">Chat messages sent for prompt generation</span>
+    <small data-i18n="ipl_limit_small">(0 = all messages)</small>
+</label>
+<select id="ipl_limit" class="text_pole">
+    <option value="1" data-i18n="ipl_limit_1">1 (last message only)</option>
+    <option value="3">3</option>
+    <option value="5">5</option>
+    <option value="10">10</option>
+    <option value="20">20</option>
+    <option value="0" data-i18n="ipl_limit_0">All messages</option>
+</select>

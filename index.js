@@ -7,7 +7,6 @@ import {
     extension_settings,
     renderExtensionTemplateAsync,
 } from '../../../extensions.js';
-import { POPUP_TYPE, callGenericPopup } from '../../../popup.js';
 
 // Installed extensions live under scripts/extensions/third-party/<name>/
 const EXTENSION_NAME = 'third-party/st-img-prompt-context-limiter';
@@ -36,6 +35,8 @@ const imagePromptMarkers = [
 
 // Set when the current quiet prompt generation looks like an image prompt request
 let pendingImagePrompt = false;
+let settingsInjected = false;
+let observer = null;
 
 function getSettings() {
     if (!extension_settings[EXTENSION_NAME]) {
@@ -94,25 +95,31 @@ function onGenerationEnded() {
     pendingImagePrompt = false;
 }
 
-async function openSettings() {
+async function injectSettings() {
+    if (settingsInjected) {
+        return;
+    }
+
+    // Inject the control into the built-in Stable Diffusion settings drawer,
+    // right after the "Minimal response prompt processing" option.
+    const anchor = document.querySelector('label[for="sd_minimal_prompt_processing"]');
+    if (!anchor) {
+        return;
+    }
+
+    settingsInjected = true;
+    observer?.disconnect();
+
     const settings = getSettings();
     const html = await renderExtensionTemplateAsync(EXTENSION_NAME, 'settings', settings);
-    const popup = $(html);
+    const block = $(html);
+    $(anchor).after(block);
 
-    popup.find('#ipl_enabled').prop('checked', settings.enabled);
-    popup.find('#ipl_limit').val(settings.limit);
-
-    popup.find('#ipl_enabled').on('change', function () {
-        getSettings().enabled = !!$(this).prop('checked');
-        saveSettingsDebounced();
-    });
-
-    popup.find('#ipl_limit').on('change', function () {
+    block.find('#ipl_limit').val(settings.limit);
+    block.find('#ipl_limit').on('change', function () {
         getSettings().limit = Number($(this).val());
         saveSettingsDebounced();
     });
-
-    callGenericPopup(popup, POPUP_TYPE.TEXT, '', { wide: true });
 }
 
 export function init() {
@@ -122,12 +129,8 @@ export function init() {
     eventSource.on(event_types.GENERATION_ENDED, onGenerationEnded);
     eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, onPromptReady);
 
-    $('#extensionsMenu').append('<div id="ipl_wand_container" class="extension_container"></div>');
-    $('#ipl_wand_container').append(`
-        <div id="ipl_menu_button" class="list-group-item flex-container flexGap5">
-            <div class="fa-solid fa-image extensionsMenuExtensionButton"></div>
-            <span data-i18n="ipl_menu_label">Image Prompt Context Limit</span>
-        </div>
-    `);
-    $('#ipl_menu_button').on('click', openSettings);
+    // Wait for the Stable Diffusion settings panel to be rendered, then inject the control
+    observer = new MutationObserver(() => injectSettings());
+    observer.observe(document.body, { childList: true, subtree: true });
+    injectSettings();
 }

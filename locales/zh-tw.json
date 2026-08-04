@@ -1,9 +1,7 @@
 {
-    "ipl_menu_label": "圖像提示詞上下文限制",
-    "ipl_title": "圖像提示詞上下文限制",
-    "ipl_enabled_txt": "限制圖像提示詞生成時傳送的聊天歷史",
-    "ipl_limit_txt": "傳送的聊天訊息數",
+    "ipl_limit_title": "生成圖像提示詞時只傳送圖像提示詞範本（system）和最近 N 則聊天訊息；角色卡、場景、世界觀等其他 system 訊息都會被略過。設為 1 時只傳送最後一則訊息。",
+    "ipl_limit_txt": "生成提示詞時傳送的聊天訊息數",
+    "ipl_limit_small": "（0 = 全部訊息）",
     "ipl_limit_1": "1（僅最後一則訊息）",
-    "ipl_limit_0": "全部訊息",
-    "ipl_hint": "只傳送圖像提示詞範本（system）和最近 N 則聊天訊息；角色卡、場景、世界觀、jailbreak 等其他 system 訊息都會被略過。範本會作為最後一則訊息傳送。"
+    "ipl_limit_0": "全部訊息"
 }

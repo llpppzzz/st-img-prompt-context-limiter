@@ -26,10 +26,10 @@ Without this extension, "Last Message" image prompt generation sends the entire 
 
 ## Usage
 
-Open the extensions menu and click the **Image Prompt Context Limit** button. The settings popup lets you:
+Open **Extensions** → **Image Generation** settings panel (the Stable Diffusion extension drawer). A new option, **Chat messages sent for prompt generation**, is injected right below "Minimal response prompt processing":
 
-- Toggle the behavior on/off
 - Choose how many recent chat messages are kept (`1 (last message only)` by default)
+- Set to **All messages** to disable rewriting and restore the default SillyTavern behavior
 
 With `1 (last message only)`, the payload sent for "Last Message" image prompt generation looks like:
 
@@ -39,8 +39,6 @@ With `1 (last message only)`, the payload sent for "Last Message" image prompt g
   { "role": "system", "content": "<image prompt template>" }
 ]
 ```
-
-Setting the value to **All messages** disables rewriting and restores the default SillyTavern behavior.
 
 ## How it works
 
