@@ -1,0 +1,17 @@
+{
+    "display_name": "Image Prompt Context Limit",
+    "loading_order": 10,
+    "requires": [],
+    "js": "index.js",
+    "author": "lipeizhou",
+    "version": "1.0.0",
+    "homePage": "https://github.com/llpppzzz/st-img-prompt-context-limiter",
+    "auto_update": true,
+    "hooks": {
+        "activate": "init"
+    },
+    "i18n": {
+        "zh-cn": "locales/zh-cn.json",
+        "zh-tw": "locales/zh-tw.json"
+    }
+}

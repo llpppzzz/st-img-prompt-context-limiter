@@ -1,0 +1,9 @@
+{
+    "ipl_menu_label": "图像提示词上下文限制",
+    "ipl_title": "图像提示词上下文限制",
+    "ipl_enabled_txt": "限制图像提示词生成时发送的聊天历史",
+    "ipl_limit_txt": "发送的聊天消息数",
+    "ipl_limit_1": "1（仅最后一条消息）",
+    "ipl_limit_0": "全部消息",
+    "ipl_hint": "只发送图像提示词模板（system）和最近 N 条聊天消息；角色卡、场景、世界观、jailbreak 等其他 system 消息都会被跳过。模板作为最后一条消息发送。"
+}
