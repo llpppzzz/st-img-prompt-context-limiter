@@ -18,23 +18,10 @@ const defaultSettings = {
     limit: 1,
 };
 
-// Markers found in the default SillyTavern image prompt templates
-const imagePromptMarkers = [
-    'comma-delimited list',
-    'comma-separated list',
-    'keywords and phrases',
-    'tags describing the appearance',
-    'text prompt used to generate the image',
-    'visual details included in the last chat message',
-    'picture that contains',
-    'exhaustive comma-separated list of tags',
-    'detailed comma-delimited list of keywords',
-    'portrait',
-    'photograph',
-];
-
 // Set when the current quiet prompt generation looks like an image prompt request
 let pendingImagePrompt = false;
+// The actual image prompt template used for this generation (from the SD extension)
+let pendingPromptText = '';
 let settingsInjected = false;
 let observer = null;
 
@@ -52,13 +39,76 @@ function getSettings() {
     return extension_settings[EXTENSION_NAME];
 }
 
-function looksLikeImagePromptTemplate(text) {
-    const lower = String(text ?? '').toLowerCase();
-    return imagePromptMarkers.some(marker => lower.includes(marker));
+/**
+ * Normalizes text for comparison: removes {{macros}} and {0} placeholders,
+ * collapses whitespace and lowercases.
+ */
+function normalizePromptText(text) {
+    return String(text ?? '')
+        .replace(/\{\{[\s\S]*?\}\}/g, ' ')
+        .replace(/\{0\}/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+/**
+ * Reads the currently configured image prompt templates from the Stable Diffusion
+ * extension settings. Returns an array of normalized template strings.
+ */
+function getImagePromptTemplates() {
+    const prompts = extension_settings?.sd?.prompts;
+    if (!prompts || typeof prompts !== 'object') {
+        return [];
+    }
+
+    return Object.values(prompts)
+        .map(p => normalizePromptText(p))
+        .filter(t => t.length >= 10);
+}
+
+/**
+ * Checks whether the quiet prompt is one of the currently configured image prompt
+ * templates (matched dynamically, so custom templates are supported too).
+ */
+function commonPrefixLength(a, b) {
+    let i = 0;
+    const max = Math.min(a.length, b.length);
+    while (i < max && a[i] === b[i]) {
+        i++;
+    }
+    return i;
+}
+
+function isImagePromptQuietPrompt(text) {
+    const normalized = normalizePromptText(text);
+    if (!normalized) {
+        return false;
+    }
+
+    const templates = getImagePromptTemplates();
+    if (templates.length === 0) {
+        return false;
+    }
+
+    return templates.some(t => normalized.startsWith(t) || t.startsWith(normalized) || commonPrefixLength(normalized, t) >= 20);
+}
+
+/**
+ * Builds a distinctive, macro-free prefix of the template used to locate the
+ * template message inside the payload.
+ */
+function getTemplateProbe(text) {
+    const clean = String(text ?? '').trim();
+    const special = clean.search(/\{\{|\{0\}/);
+    const prefix = special === -1 ? clean : clean.slice(0, special);
+    return prefix.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 60);
 }
 
 function onGenerationStarted(type, options) {
-    pendingImagePrompt = type === 'quiet' && looksLikeImagePromptTemplate(options?.quiet_prompt);
+    const quietPrompt = String(options?.quiet_prompt ?? '');
+    pendingImagePrompt = type === 'quiet' && isImagePromptQuietPrompt(quietPrompt);
+    pendingPromptText = pendingImagePrompt ? quietPrompt : '';
 }
 
 function onPromptReady(data) {
@@ -70,15 +120,23 @@ function onPromptReady(data) {
 
     const settings = getSettings();
     if (!settings.enabled || settings.limit <= 0) {
+        pendingPromptText = '';
         return;
     }
 
     const chat = data.chat;
 
-    // Locate the image prompt template (quiet prompt) by its content, not by position.
-    // System messages inserted after the chat history (e.g. custom prompts) must be
-    // excluded instead of being mistaken for the template.
-    const template = [...chat].reverse().find(m => m?.role === 'system' && looksLikeImagePromptTemplate(m.content));
+    // Locate the image prompt template message by its actual content (the quiet
+    // prompt used for this generation), not by position or hardcoded markers.
+    // Other system messages (e.g. custom prompts inserted after the chat history)
+    // are excluded instead of being mistaken for the template.
+    const probe = getTemplateProbe(pendingPromptText);
+    pendingPromptText = '';
+    if (probe.length < 10) {
+        return;
+    }
+
+    const template = [...chat].reverse().find(m => m?.role === 'system' && normalizePromptText(m.content).includes(probe));
     if (!template) {
         return;
     }
@@ -93,6 +151,7 @@ function onPromptReady(data) {
 
 function onGenerationEnded() {
     pendingImagePrompt = false;
+    pendingPromptText = '';
 }
 
 async function injectSettings() {
