@@ -2,6 +2,7 @@ import {
     eventSource,
     event_types,
     saveSettingsDebounced,
+    substituteParams,
 } from '../../../../script.js';
 import {
     extension_settings,
@@ -163,6 +164,7 @@ function onPromptReady(data) {
     // Other system messages (e.g. custom prompts inserted after the chat history)
     // are excluded instead of being mistaken for the template.
     const probe = getTemplateProbe(pendingPromptText);
+    const templateText = pendingPromptText;
     pendingPromptText = '';
     debugLog('probe', probe);
     if (probe.length < 10) {
@@ -175,9 +177,18 @@ function onPromptReady(data) {
         return;
     }
 
+    // When "squash system messages" is enabled, the template may be merged with
+    // other system prompts (e.g. a Chain-of-Thought prompt) into a single system
+    // message. Rebuild the template content from the captured quiet prompt so
+    // only the image prompt template is kept in the payload.
+    const templateMessage = {
+        role: 'system',
+        content: substituteParams(templateText),
+    };
+
     const chatMessages = chat.filter(m => m !== template && m?.role !== 'system' && m?.content && messageContentText(m).trim());
 
-    const newChat = [...chatMessages.slice(-settings.limit), template];
+    const newChat = [...chatMessages.slice(-settings.limit), templateMessage];
 
     debugLog('rewritten payload', newChat.map(m => ({ role: m?.role, content: messageContentText(m).slice(0, 80) })));
 

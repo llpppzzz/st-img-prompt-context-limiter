@@ -44,6 +44,7 @@ With `1 (last message only)`, the payload sent for "Last Message" image prompt g
 
 - Listens to `GENERATION_STARTED`; when the generation is a quiet prompt (`type === 'quiet'`) whose text matches the built-in image prompt templates, it arms a rewrite.
 - Listens to `CHAT_COMPLETION_PROMPT_READY`; if armed, it replaces the messages array in place with the last N non-system messages followed by the template system message.
+- If system message squashing merges the template with other system prompts (e.g. a Chain-of-Thought prompt), the template content is rebuilt from the captured quiet prompt so only the template is kept.
 - No built-in SillyTavern files are modified — everything happens at runtime, so it works on any instance just by installing the extension.
 
 ## Limitations
