@@ -74,16 +74,16 @@ function onPromptReady(data) {
     }
 
     const chat = data.chat;
-    const template = chat[chat.length - 1];
 
-    // The image prompt template must be the last message (system role)
-    if (!template || template.role !== 'system' || !looksLikeImagePromptTemplate(template.content)) {
+    // Locate the image prompt template (quiet prompt) by its content, not by position.
+    // System messages inserted after the chat history (e.g. custom prompts) must be
+    // excluded instead of being mistaken for the template.
+    const template = [...chat].reverse().find(m => m?.role === 'system' && looksLikeImagePromptTemplate(m.content));
+    if (!template) {
         return;
     }
 
-    const chatMessages = chat
-        .slice(0, -1)
-        .filter(m => m?.role !== 'system' && m?.content && String(m.content).trim());
+    const chatMessages = chat.filter(m => m !== template && m?.role !== 'system' && m?.content && String(m.content).trim());
 
     const newChat = [...chatMessages.slice(-settings.limit), template];
 
