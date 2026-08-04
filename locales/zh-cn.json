@@ -3,5 +3,6 @@
     "ipl_limit_txt": "生成提示词时发送的聊天消息数",
     "ipl_limit_small": "（0 = 全部消息）",
     "ipl_limit_1": "1（仅最后一条消息）",
-    "ipl_limit_0": "全部消息"
+    "ipl_limit_0": "全部消息",
+    "ipl_debug_txt": "调试日志"
 }

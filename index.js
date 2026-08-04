@@ -16,6 +16,8 @@ const defaultSettings = {
     enabled: true,
     // How many recent chat messages to keep (0 = keep all / no rewrite)
     limit: 1,
+    // Log debugging information to the browser console
+    debug: false,
 };
 
 // Set when the current quiet prompt generation looks like an image prompt request
@@ -39,12 +41,37 @@ function getSettings() {
     return extension_settings[EXTENSION_NAME];
 }
 
+function debugLog(...args) {
+    if (getSettings().debug) {
+        console.log('[ImagePromptContextLimit]', ...args);
+    }
+}
+
+/**
+ * Extracts plain text from a chat message content (string or content parts array).
+ */
+function messageContentText(message) {
+    const content = message?.content;
+    if (typeof content === 'string') {
+        return content;
+    }
+    if (Array.isArray(content)) {
+        return content.map(part => typeof part === 'string' ? part : (part?.text ?? '')).join(' ');
+    }
+    return '';
+}
+
 /**
  * Normalizes text for comparison: removes {{macros}} and {0} placeholders,
  * collapses whitespace and lowercases.
  */
 function normalizePromptText(text) {
-    return String(text ?? '')
+    const content = typeof text === 'string'
+        ? text
+        : Array.isArray(text)
+            ? text.map(part => typeof part === 'string' ? part : (part?.text ?? '')).join(' ')
+            : String(text ?? '');
+    return content
         .replace(/\{\{[\s\S]*?\}\}/g, ' ')
         .replace(/\{0\}/g, ' ')
         .replace(/\s+/g, ' ')
@@ -67,10 +94,6 @@ function getImagePromptTemplates() {
         .filter(t => t.length >= 10);
 }
 
-/**
- * Checks whether the quiet prompt is one of the currently configured image prompt
- * templates (matched dynamically, so custom templates are supported too).
- */
 function commonPrefixLength(a, b) {
     let i = 0;
     const max = Math.min(a.length, b.length);
@@ -80,6 +103,10 @@ function commonPrefixLength(a, b) {
     return i;
 }
 
+/**
+ * Checks whether the quiet prompt is one of the currently configured image prompt
+ * templates (matched dynamically, so custom templates are supported too).
+ */
 function isImagePromptQuietPrompt(text) {
     const normalized = normalizePromptText(text);
     if (!normalized) {
@@ -107,11 +134,16 @@ function getTemplateProbe(text) {
 
 function onGenerationStarted(type, options) {
     const quietPrompt = String(options?.quiet_prompt ?? '');
-    pendingImagePrompt = type === 'quiet' && isImagePromptQuietPrompt(quietPrompt);
-    pendingPromptText = pendingImagePrompt ? quietPrompt : '';
+    const armed = type === 'quiet' && isImagePromptQuietPrompt(quietPrompt);
+    pendingImagePrompt = armed;
+    pendingPromptText = armed ? quietPrompt : '';
+    debugLog('GENERATION_STARTED', { type, armed, prompt: quietPrompt.slice(0, 150) });
 }
 
 function onPromptReady(data) {
+    const summary = data?.chat?.map(m => ({ role: m?.role, content: messageContentText(m).slice(0, 80) }));
+    debugLog('CHAT_COMPLETION_PROMPT_READY', { pending: pendingImagePrompt, messages: summary });
+
     if (!pendingImagePrompt || !data?.chat || !Array.isArray(data.chat)) {
         return;
     }
@@ -132,18 +164,22 @@ function onPromptReady(data) {
     // are excluded instead of being mistaken for the template.
     const probe = getTemplateProbe(pendingPromptText);
     pendingPromptText = '';
+    debugLog('probe', probe);
     if (probe.length < 10) {
         return;
     }
 
-    const template = [...chat].reverse().find(m => m?.role === 'system' && normalizePromptText(m.content).includes(probe));
+    const template = [...chat].reverse().find(m => m?.role === 'system' && normalizePromptText(messageContentText(m)).includes(probe));
+    debugLog('template found', !!template);
     if (!template) {
         return;
     }
 
-    const chatMessages = chat.filter(m => m !== template && m?.role !== 'system' && m?.content && String(m.content).trim());
+    const chatMessages = chat.filter(m => m !== template && m?.role !== 'system' && m?.content && messageContentText(m).trim());
 
     const newChat = [...chatMessages.slice(-settings.limit), template];
+
+    debugLog('rewritten payload', newChat.map(m => ({ role: m?.role, content: messageContentText(m).slice(0, 80) })));
 
     // Mutate in place: prepareOpenAIMessages returns the same array reference
     chat.splice(0, chat.length, ...newChat);
@@ -177,6 +213,12 @@ async function injectSettings() {
     block.find('#ipl_limit').val(settings.limit);
     block.find('#ipl_limit').on('change', function () {
         getSettings().limit = Number($(this).val());
+        saveSettingsDebounced();
+    });
+
+    block.find('#ipl_debug').prop('checked', settings.debug);
+    block.find('#ipl_debug').on('change', function () {
+        getSettings().debug = !!$(this).prop('checked');
         saveSettingsDebounced();
     });
 }
