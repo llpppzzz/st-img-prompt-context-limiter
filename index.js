@@ -2,14 +2,15 @@ import {
     eventSource,
     event_types,
     saveSettingsDebounced,
-} from '../../../script.js';
+} from '../../../../script.js';
 import {
     extension_settings,
     renderExtensionTemplateAsync,
-} from '../../extensions.js';
-import { POPUP_TYPE, callGenericPopup } from '../../popup.js';
+} from '../../../extensions.js';
+import { POPUP_TYPE, callGenericPopup } from '../../../popup.js';
 
-const EXTENSION_NAME = 'st-img-prompt-context-limiter';
+// Installed extensions live under scripts/extensions/third-party/<name>/
+const EXTENSION_NAME = 'third-party/st-img-prompt-context-limiter';
 
 const defaultSettings = {
     // Whether to rewrite image prompt generation requests at all
