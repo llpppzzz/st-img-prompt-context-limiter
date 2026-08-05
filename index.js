@@ -17,8 +17,6 @@ const defaultSettings = {
     enabled: true,
     // How many recent chat messages to keep (0 = keep all / no rewrite)
     limit: 1,
-    // Log debugging information to the browser console
-    debug: false,
 };
 
 // Set when the current quiet prompt generation looks like an image prompt request
@@ -40,12 +38,6 @@ function getSettings() {
     }
 
     return extension_settings[EXTENSION_NAME];
-}
-
-function debugLog(...args) {
-    if (getSettings().debug) {
-        console.log('[ImagePromptContextLimit]', ...args);
-    }
 }
 
 /**
@@ -138,13 +130,9 @@ function onGenerationStarted(type, options) {
     const armed = type === 'quiet' && isImagePromptQuietPrompt(quietPrompt);
     pendingImagePrompt = armed;
     pendingPromptText = armed ? quietPrompt : '';
-    debugLog('GENERATION_STARTED', { type, armed, prompt: quietPrompt.slice(0, 150) });
 }
 
 function onPromptReady(data) {
-    const summary = data?.chat?.map(m => ({ role: m?.role, content: messageContentText(m).slice(0, 80) }));
-    debugLog('CHAT_COMPLETION_PROMPT_READY', { pending: pendingImagePrompt, messages: summary });
-
     if (!pendingImagePrompt || !data?.chat || !Array.isArray(data.chat)) {
         return;
     }
@@ -166,13 +154,11 @@ function onPromptReady(data) {
     const probe = getTemplateProbe(pendingPromptText);
     const templateText = pendingPromptText;
     pendingPromptText = '';
-    debugLog('probe', probe);
     if (probe.length < 10) {
         return;
     }
 
     const template = [...chat].reverse().find(m => m?.role === 'system' && normalizePromptText(messageContentText(m)).includes(probe));
-    debugLog('template found', !!template);
     if (!template) {
         return;
     }
@@ -189,8 +175,6 @@ function onPromptReady(data) {
     const chatMessages = chat.filter(m => m !== template && m?.role !== 'system' && m?.content && messageContentText(m).trim());
 
     const newChat = [...chatMessages.slice(-settings.limit), templateMessage];
-
-    debugLog('rewritten payload', newChat.map(m => ({ role: m?.role, content: messageContentText(m).slice(0, 80) })));
 
     // Mutate in place: prepareOpenAIMessages returns the same array reference
     chat.splice(0, chat.length, ...newChat);
@@ -224,12 +208,6 @@ async function injectSettings() {
     block.find('#ipl_limit').val(settings.limit);
     block.find('#ipl_limit').on('change', function () {
         getSettings().limit = Number($(this).val());
-        saveSettingsDebounced();
-    });
-
-    block.find('#ipl_debug').prop('checked', settings.debug);
-    block.find('#ipl_debug').on('change', function () {
-        getSettings().debug = !!$(this).prop('checked');
         saveSettingsDebounced();
     });
 }

@@ -3,6 +3,5 @@
     "ipl_limit_txt": "生成提示詞時傳送的聊天訊息數",
     "ipl_limit_small": "（0 = 全部訊息）",
     "ipl_limit_1": "1（僅最後一則訊息）",
-    "ipl_limit_0": "全部訊息",
-    "ipl_debug_txt": "除錯日誌"
+    "ipl_limit_0": "全部訊息"
 }
